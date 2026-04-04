@@ -18,9 +18,14 @@ sessions = {}
 async def start_assessment(req: AssessmentStartRequest):
     session_id = str(uuid.uuid4())
     language = get_language_for_field(req.field)
-    prompt = build_assessment_question_prompt(req.field, "beginner")
-    question = call_gemini(prompt, {"id", "type", "question", "options", "correct_answer", "explanation", "topic"})
-    question["type"] = "mcq"
+    try:
+        prompt = build_assessment_question_prompt(req.field, "beginner")
+        question = call_gemini(prompt, {"id", "type", "question", "options", "correct_answer", "explanation", "topic"})
+        question["type"] = "mcq"
+    except Exception as e:
+        # نرفع 503 مع رسالة مناسبة
+        raise HTTPException(status_code=503, detail=str(e))
+    
     sessions[session_id] = {
         "field": req.field,
         "questions": [question],
@@ -43,26 +48,34 @@ async def submit_answer(req: AssessmentAnswerRequest):
     session = sessions.get(req.session_id)
     if not session:
         raise HTTPException(400, "Invalid or expired session")
+    
     current_q = session["questions"][session["current_index"]]
+    
     if current_q["type"] == "mcq":
-        is_correct = (req.answer == current_q["correct_answer"])
+        is_correct = (req.answer == current_q.get("correct_answer"))
         session["answers"].append({
             "type": "mcq",
             "question": current_q["question"],
             "user_answer": req.answer,
             "correct": is_correct,
-            "topic": current_q["topic"]
+            "topic": current_q.get("topic", "general")
         })
     else:  # coding
-        code_req = CodeReviewRequest(
-            code=req.answer,
-            language=session["language"],
-            question=current_q["question"],
-            user_level="beginner"
-        )
-        review = await review_code(code_req)
-        is_correct = review.get("is_correct", False)
-        coding_score = review.get("score", 0)
+        try:
+            code_req = CodeReviewRequest(
+                code=req.answer,
+                language=session["language"],
+                question=current_q["question"],
+                user_level="beginner"
+            )
+            review = await review_code(code_req)
+            is_correct = review.get("is_correct", False)
+            coding_score = review.get("score", 0)
+        except Exception as e:
+            # إذا فشل تنفيذ الكود، نعتبر الإجابة خاطئة (لا نرفع 500)
+            print(f"⚠️ فشل تنفيذ/مراجعة الكود: {e}")
+            is_correct = False
+            coding_score = 0
         session["answers"].append({
             "type": "coding",
             "question": current_q["question"],
@@ -71,7 +84,9 @@ async def submit_answer(req: AssessmentAnswerRequest):
             "score": coding_score,
             "topic": "coding"
         })
+    
     session["current_index"] += 1
+    
     if session["current_index"] < 5:
         is_last = (session["current_index"] == 4)
         mcq_answers = [a for a in session["answers"] if a["type"] == "mcq"]
@@ -82,14 +97,21 @@ async def submit_answer(req: AssessmentAnswerRequest):
             next_diff = "intermediate"
         else:
             next_diff = "beginner"
-        if is_last:
-            prompt = build_coding_question_prompt(session["field"], next_diff, session["language"], session["answers"])
-            next_q = call_gemini(prompt, {"id", "type", "question", "language", "expected_behavior"})
-            next_q["type"] = "coding"
-        else:
-            prompt = build_assessment_question_prompt(session["field"], next_diff, session["answers"])
-            next_q = call_gemini(prompt, {"id", "type", "question", "options", "correct_answer", "explanation", "topic"})
-            next_q["type"] = "mcq"
+        
+        try:
+            if is_last:
+                prompt = build_coding_question_prompt(session["field"], next_diff, session["language"], session["answers"])
+                next_q = call_gemini(prompt, {"id", "type", "question", "language", "expected_behavior"})
+                next_q["type"] = "coding"
+            else:
+                prompt = build_assessment_question_prompt(session["field"], next_diff, session["answers"])
+                next_q = call_gemini(prompt, {"id", "type", "question", "options", "correct_answer", "explanation", "topic"})
+                next_q["type"] = "mcq"
+        except Exception as e:
+            # فشل توليد السؤال التالي → نرفع 503 وننهي الجلسة
+            del sessions[req.session_id]
+            raise HTTPException(status_code=503, detail=f"فشل توليد السؤال التالي: {str(e)}")
+        
         session["questions"].append(next_q)
         sessions[req.session_id] = session
         safe_question = {k: v for k, v in next_q.items() if k != "correct_answer"}
@@ -100,11 +122,18 @@ async def submit_answer(req: AssessmentAnswerRequest):
             "question": safe_question,
             "updated_user_context": None
         }
-    # انتهى
+    
+    # انتهى الاختبار
     coding_answers = [a for a in session["answers"] if a["type"] == "coding"]
     coding_score_final = coding_answers[0].get("score") if coding_answers else None
-    final_prompt = build_assessment_final_prompt(session["field"], session["answers"], coding_score_final)
-    result = call_gemini(final_prompt, {"level", "strong_topics", "weak_topics", "summary"})
+    
+    try:
+        final_prompt = build_assessment_final_prompt(session["field"], session["answers"], coding_score_final)
+        result = call_gemini(final_prompt, {"level", "strong_topics", "weak_topics", "summary"})
+    except Exception as e:
+        del sessions[req.session_id]
+        raise HTTPException(status_code=503, detail=f"فشل تحليل النتيجة: {str(e)}")
+    
     original_ctx = UserContext(**session["original_context"])
     original_ctx.level = result["level"]
     original_ctx.strong_topics = result["strong_topics"]
@@ -116,6 +145,7 @@ async def submit_answer(req: AssessmentAnswerRequest):
     else:
         all_scores = mcq_scores
     original_ctx.average_quiz_score = sum(all_scores) / len(all_scores) if all_scores else 0
+    
     del sessions[req.session_id]
     return {
         "session_id": None,

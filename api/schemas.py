@@ -1,5 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 # ══════════════════════════════════════════════
@@ -110,7 +111,7 @@ class UserContext(BaseModel):
 
     # ملاحظات
     struggles: str                   = Field(default="")
-    last_activity: str               = Field(default="")
+    last_activity: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
 class ChatRequest(BaseModel):

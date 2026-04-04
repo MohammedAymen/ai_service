@@ -68,23 +68,20 @@ def build_chat_prompt(r: ChatRequest) -> str:
     "platform": string | null,
     "estimated_hours": number | null
   }} | null
+  "updated_user_context": {{
+    "stage": string | null,
+    "current_phase_number": number | null,
+    "current_course_title": string | null,
+    "current_course_url": string | null,
+    "completed_phases": [string] | null,
+    "overall_progress_percent": number | null,
+    "strong_topics": [string] | null,
+    "weak_topics": [string] | null
+  }} | null
 }}
-7. لو المستخدم قال أي كلمة زي "اختبرني" أو "تيست" أو "quiz" أو "سألني":
-   - اعمله سؤال برمجة عملي على طول
-   - type يبقى "question"
-   - متشرحش ومتسألش — ابدأ السؤال فوراً
+7. إذا أكمل المستخدم كورساً بنجاح، قم بتحديث updated_user_context (مثلاً زيادة current_phase_number، تحديث current_course_title/url).
+8. إذا كنت في مرحلة onboarding، اشرح الرود ماب وحدد أول كورس، ثم غيّر stage إلى learning.
 
-8. لو المستخدم بيسأل عن موضوع زي "مش فاهم" أو "اشرحلي":
-   - اشرحه بمثال بسيط
-   - type يبقى "info"
-
-9. لو المستخدم بعت إجابة على سؤال كان في الـ chat_history:
-   - تحقق من صحة الإجابة بشكل دقيق أولاً
-   - ReLU أسرع من Sigmoid وبتحل مشكلة Vanishing Gradient — لو قال العكس يبقى غلط
-   - لو الإجابة غلط علمياً → قوله غلط بوضوح واشرحله الإجابة الصح
-   - لو الإجابة صح → اشكره وكمّل
-   - type يبقى "feedback" دايماً
-   - لا تتساهل في تصحيح الإجابات الغلط
 {history_text}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -142,6 +139,7 @@ def _get_stage_instructions(ctx) -> str:
 - وضحله هو دلوقتي في أنهي فيز وإيه اللي هيتعلمه
 - ابعتله لينك الكورس الأول
 - قوله إنك هتكون معاه في كل خطوة
+-مرحلة شرح الرود ماب: اشرح المسار وأول كورس، ثم غيّر stage إلى learning.
 """
     else:  # learning
         return """

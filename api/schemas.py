@@ -131,3 +131,27 @@ class CodeReviewRequest(BaseModel):
     language: str        = Field(default="python", example="python")
     question: str        = Field(..., example="اكتب دالة تجمع رقمين")
     user_level: Literal["beginner", "intermediate", "advanced"] = "beginner"
+
+
+# ─────────────────────────────────────────────────────────────
+# Assessment
+# ─────────────────────────────────────────────────────────────
+class AssessmentStartRequest(BaseModel):
+    user_context: UserContext
+    field: str
+    goal: str = ""
+
+class AssessmentAnswerRequest(BaseModel):
+    session_id: str
+    answer: str
+
+# ─────────────────────────────────────────────────────────────
+# Final Quiz
+# ─────────────────────────────────────────────────────────────
+class FinalQuizStartRequest(BaseModel):
+    user_context: UserContext
+
+class FinalQuizSubmitRequest(BaseModel):
+    session_id: str
+    answers: dict
+    user_context: UserContext

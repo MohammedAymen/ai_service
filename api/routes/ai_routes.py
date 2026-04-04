@@ -75,7 +75,8 @@ def reroute(request: RerouteRequest):
 def chat(request: ChatRequest):
     try:
         result = generate_chat_reply(request)
-        return {"status": "success", "data": result}
+        updated_ctx = result.get("updated_user_context")
+        return {"status": "success", "data": result, "updated_user_context": updated_ctx}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

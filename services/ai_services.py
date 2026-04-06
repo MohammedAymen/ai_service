@@ -48,16 +48,13 @@ def generate_chat_reply(r: ChatRequest) -> dict:
 
 
 async def review_code(r: CodeReviewRequest) -> dict:
-    # الخطوة 1 — شغّل الكود
     execution_result = await run_code(r.code, r.language)
 
-    # الخطوة 2 — ابعت الكود والنتيجة لجيميني يراجعهم
     review = call_gemini(
         prompt=build_code_review_prompt(r, execution_result),
         required_keys={"is_correct", "score", "feedback"},
     )
 
-    # الخطوة 3 — ضيف نتيجة التشغيل في الرد
     review["execution"] = execution_result
 
     return review

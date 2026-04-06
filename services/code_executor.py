@@ -1,9 +1,9 @@
 import httpx
 import asyncio
 
-# قائمة endpoints بديلة مجانية
+
 PISTON_ENDPOINTS = [
-    "https://emkc.org/api/v2/piston/execute",  # الأصلي (قد يطلب مفتاح الآن)
+    "https://emkc.org/api/v2/piston/execute",  
     "https://piston.kwbar.dev/api/v2/execute",
     "https://piston.deno.dev/api/v2/execute",
 ]

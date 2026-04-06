@@ -5,7 +5,7 @@ from services.ai_services import generate_quiz
 
 router = APIRouter(prefix="/final-quiz", tags=["Final Quiz"])
 
-# تخزين مؤقت للاختبارات (في الذاكرة)
+
 quiz_sessions = {}
 
 @router.post("/start")
@@ -16,7 +16,7 @@ def start_final_quiz(req: FinalQuizStartRequest):
     """
     session_id = str(uuid.uuid4())
     
-    # استخراج البيانات من user_context
+    
     course_title = req.user_context.current_course_title
     topic = req.user_context.current_phase_title
     level = req.user_context.level
@@ -27,7 +27,7 @@ def start_final_quiz(req: FinalQuizStartRequest):
             detail="لا يمكن بدء الاختبار النهائي: لم يتم تحديد الكورس الحالي أو الموضوع."
         )
     
-    # توليد اختبار من 10 أسئلة باستخدام QuizRequest
+   
     quiz_req = QuizRequest(
         course_title=course_title,
         topic=topic,
@@ -46,7 +46,7 @@ def start_final_quiz(req: FinalQuizStartRequest):
         "user_context": req.user_context.dict()
     }
     
-    # إزالة الإجابات الصحيحة من الأسئلة المرسلة للعميل
+   
     safe_questions = []
     for q in quiz_data["questions"]:
         safe_q = {k: v for k, v in q.items() if k != "correct_answer"}
@@ -75,11 +75,11 @@ def submit_final_quiz(req: FinalQuizSubmitRequest):
     
     quiz_data = session["quiz_data"]
     
-    # التحقق من صحة الإجابات
+    
     if not req.answers:
         raise HTTPException(400, detail="لم يتم إرسال أي إجابات.")
     
-    # تصحيح الإجابات
+   
     score = 0
     total = len(quiz_data["questions"])
     for q in quiz_data["questions"]:
@@ -92,7 +92,7 @@ def submit_final_quiz(req: FinalQuizSubmitRequest):
     passing_score = quiz_data["passing_score"]
     passed = score_percent >= passing_score
     
-    # استعادة السياق الأصلي وتحديثه
+    
     original_ctx = UserContext(**session["user_context"])
     
     if passed:
@@ -106,7 +106,7 @@ def submit_final_quiz(req: FinalQuizSubmitRequest):
         original_ctx.stage = "recovery"
         message = f"نسبة نجاحك {score_percent:.1f}% أقل من {passing_score}%. راجع نقاط الضعف وحاول مجدداً."
     
-    # حذف الجلسة بعد الاستخدام
+    
     del quiz_sessions[req.session_id]
     
     return {

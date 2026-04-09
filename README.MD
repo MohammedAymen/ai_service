@@ -274,6 +274,43 @@
 ```
 انا لسه مضيفتش جزئيه الحل لسه هعملها 
 ---
+## ✅ Quiz Evaluation (NEW)
+
+### POST /quiz/submit
+Evaluates quiz answers and returns detailed feedback.
+#### Request Body
+{
+  "answers": { "1": "B", "2": "C", "3": "A" },
+  "questions": [],
+  "passing_score": 66,
+  "language": "Arabic"
+}
+#### Response
+{
+  "score": 2,
+  "total": 3,
+  "percentage": 66.7,
+  "passed": false,
+  "passing_score": 66,
+  "results": [
+    {
+      "id": 1,
+      "question": "...",
+      "user_answer": "B",
+      "correct_answer": "B",
+      "is_correct": true,
+      "explanation": "...",
+      "topic": "CSS Grid"
+    }
+  ],
+  "summary": "...",
+  "recommendation": "..."
+}
+### Notes:
+- لا يتم استخدام `session_id` لأن التصحيح يعتمد على البيانات المرسلة بالكامل.
+- الـ Frontend مسؤول عن عرض النتيجة للمستخدم.
+- يتم تخزين النتائج مؤقتًا (Local State أو LocalStorage).
+- يدعم النظام Feedback ذكي من خلال `summary` و `recommendation`.
 
 ## 5️⃣ Final Quiz
 ده فاينل كويز بيبقى في نهاية كل كورس بتناديه بتنادي استارت اول حاجه 

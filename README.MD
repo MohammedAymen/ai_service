@@ -279,13 +279,16 @@
 ### POST /quiz/submit
 Evaluates quiz answers and returns detailed feedback.
 #### Request Body
+```json
 {
   "answers": { "1": "B", "2": "C", "3": "A" },
   "questions": [],
   "passing_score": 66,
   "language": "Arabic"
 }
+```
 #### Response
+```json
 {
   "score": 2,
   "total": 3,
@@ -306,6 +309,7 @@ Evaluates quiz answers and returns detailed feedback.
   "summary": "...",
   "recommendation": "..."
 }
+```
 ### Notes:
 - لا يتم استخدام `session_id` لأن التصحيح يعتمد على البيانات المرسلة بالكامل.
 - الـ Frontend مسؤول عن عرض النتيجة للمستخدم.
